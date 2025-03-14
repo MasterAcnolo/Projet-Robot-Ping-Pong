@@ -47,6 +47,9 @@ bool isButtonPressed(int pin, bool &prevState) {
 
 // Initialisation de l'écran et des boutons
 void setup() {
+  Serial.begin(9600);  // Initialisation correcte du moniteur série
+  Serial.println("setup"); // Ajout du point-virgule
+
   lcd.init();
   lcd.backlight();
 
@@ -64,6 +67,7 @@ void setup() {
 
 // Fonction pour afficher les informations sur l'écran LCD
 void displayInfo() {
+  Serial.println("displayinfo");
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Mode: ");
@@ -82,6 +86,7 @@ void displayInfo() {
 
 // Fonction pour changer de mode (droitier / gaucher)
 void toggleMode() {
+  Serial.println("togglemode");
   currentMode = (currentMode == DROITIER) ? GAUCHER : DROITIER;
   displayInfo();
 }
@@ -122,6 +127,7 @@ void startTraining() {
 
 // Fonction pour gérer la mise en veille
 void goToSleep() {
+  Serial.println("sleep");
   isInSleepMode = true;
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -131,6 +137,7 @@ void goToSleep() {
 
 // Fonction pour reprendre l'entraînement après une pause
 void resumeTraining() {
+  Serial.println("resumetraining");
   isPaused = false;
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -140,6 +147,7 @@ void resumeTraining() {
 
 // Fonction pour mettre l'entraînement en pause
 void pauseTraining() {
+  Serial.println("pause");
   isPaused = true;
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -149,6 +157,8 @@ void pauseTraining() {
 
 // Boucle principale
 void loop() {
+
+  Serial.println("Main LOOP ");
   // Vérification des boutons avec anti-rebond
   if (isButtonPressed(BTN_UP, btnUpPrevState)) {
     adjustDifficulty(1); // Augmenter la difficulté
