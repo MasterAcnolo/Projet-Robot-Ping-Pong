@@ -12,21 +12,45 @@
 // Définition des modes et des niveaux de difficulté
 enum Mode {DROITIER, GAUCHER};
 enum Diff {DEBUTANT, FACILE, NORMAL, DIFFICILE, EXTREME};
-enum Train {REVERS, COUP_DROIT, SMASH, TOUS};
+enum Train {REVERS, COUP_DROIT, SMASH, TOUS, CHALLENGE};
 
-Mode currentMode = DROITIER; // Mode par défaut (droitier)
-Diff currentDifficulty = DEBUTANT; // Niveau de difficulté par défaut (débutant)
-Train currenttrain = TOUS; // Entraînement par défaut (tous)
+// Variables globales pour l'état actuel du système
+Mode currentMode = DROITIER; // Mode par défaut
+Diff currentDifficulty = DEBUTANT; // Niveau par défaut
+Train currentTrain = TOUS; // Type d'entraînement par défaut
+bool isPaused = false; // Variable pour la gestion de la pause
+bool isInSleepMode = false; // Variable pour la gestion de la mise en veille
+
+// Variables pour suivre l'état des boutons (précédent et actuel)
+bool btnUpPrevState = HIGH;
+bool btnDownPrevState = HIGH;
+bool btnChangeModePrevState = HIGH;
+bool btnValidatePrevState = HIGH;
+bool btnBackPrevState = HIGH;
+bool btnPowerPrevState = HIGH;
+bool btnPausePlayPrevState = HIGH;
 
 // Création d'un objet LCD pour un écran I2C (adresse 0x27, taille 16x2)
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Changez l'adresse si nécessaire
+
+// Fonction pour lire les boutons avec gestion des rebonds
+bool isButtonPressed(int pin, bool &prevState) {
+  bool currentState = digitalRead(pin);
+  if (currentState == LOW && prevState == HIGH) {  // Changement d'état du bouton (appui)
+    delay(50);  // Anti-rebond logiciel
+    prevState = currentState;
+    return true;
+  }
+  prevState = currentState;
+  return false;
+}
 
 // Initialisation de l'écran et des boutons
 void setup() {
   lcd.init();
   lcd.backlight();
 
-  // Définition des broches comme entrée avec résistance de tirage interne (INPUT_PULLUP)
+  // Définition des broches comme entrée avec pull-up interne
   pinMode(BTN_UP, INPUT_PULLUP);
   pinMode(BTN_DOWN, INPUT_PULLUP);
   pinMode(BTN_POWER, INPUT_PULLUP);
@@ -47,101 +71,115 @@ void displayInfo() {
 
   lcd.setCursor(0, 1);
   lcd.print("Difficulte: ");
-  
   switch (currentDifficulty) {
-    case DEBUTANT:
-      lcd.print("Debutant");
-      break;
-    case FACILE:
-      lcd.print("Facile");
-      break;
-    case NORMAL:
-      lcd.print("Normal");
-      break;
-    case DIFFICILE:
-      lcd.print("Difficile");
-      break;
-    case EXTREME:
-      lcd.print("Extreme");
-      break;
+    case DEBUTANT: lcd.print("Debutant"); break;
+    case FACILE: lcd.print("Facile"); break;
+    case NORMAL: lcd.print("Normal"); break;
+    case DIFFICILE: lcd.print("Difficile"); break;
+    case EXTREME: lcd.print("Extreme"); break;
   }
 }
 
 // Fonction pour changer de mode (droitier / gaucher)
 void toggleMode() {
-  if (currentMode == DROITIER) {
-    currentMode = GAUCHER;
-  } else {
-    currentMode = DROITIER;
-  }
+  currentMode = (currentMode == DROITIER) ? GAUCHER : DROITIER;
+  displayInfo();
 }
 
 // Fonction pour changer le niveau de difficulté
 void adjustDifficulty(int direction) {
-  // Si direction > 0, on augmente la difficulté, sinon on la diminue
   if (direction > 0) {
     currentDifficulty = (Diff)((currentDifficulty + 1) % 5);
   } else {
     currentDifficulty = (Diff)((currentDifficulty - 1 + 5) % 5);
   }
+  displayInfo();
 }
 
-// Fonction pour gérer les entraînements particuliers
+// Fonction pour gérer les entraînements
 void startTraining() {
-  switch (currenttrain) {
-    case REVERS:
-      // Logique pour l'entraînement revers
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  switch (currentTrain) {
+    case REVERS: 
+      lcd.print("Entrainement Revers");
       break;
-    case COUP_DROIT:
-      // Logique pour l'entraînement coup droit
+    case COUP_DROIT: 
+      lcd.print("Entrainement Coup Droit");
       break;
-    case SMASH:
-      // Logique pour l'entraînement smash
+    case SMASH: 
+      lcd.print("Entrainement Smash");
       break;
-    case TOUS:
-      // Logique pour l'entraînement général
+    case TOUS: 
+      lcd.print("Entrainement General");
+      break;
+    case CHALLENGE:
+      lcd.print("Entrainement Challenge");
       break;
   }
+  delay(2000); // Afficher l'écran pendant 2 secondes
 }
 
-// Fonction principale pour gérer les entrées et l'état du système
+// Fonction pour gérer la mise en veille
+void goToSleep() {
+  isInSleepMode = true;
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Mode veille...");
+  delay(3000); // Afficher "Mode veille" pendant 3 secondes
+}
+
+// Fonction pour reprendre l'entraînement après une pause
+void resumeTraining() {
+  isPaused = false;
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Reprise de l'entrainement");
+  delay(2000); // Afficher pendant 2 secondes
+}
+
+// Fonction pour mettre l'entraînement en pause
+void pauseTraining() {
+  isPaused = true;
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Entrainement en pause");
+  delay(2000); // Afficher pendant 2 secondes
+}
+
+// Boucle principale
 void loop() {
-  // Lecture des boutons pour gérer la navigation dans les menus
-  if (digitalRead(BTN_UP) == LOW) { // Changer pour LOW (poussé)
+  // Vérification des boutons avec anti-rebond
+  if (isButtonPressed(BTN_UP, btnUpPrevState)) {
     adjustDifficulty(1); // Augmenter la difficulté
-    displayInfo();
-    delay(500); // Anti-rebond
   }
 
-  if (digitalRead(BTN_DOWN) == LOW) { // Changer pour LOW (poussé)
+  if (isButtonPressed(BTN_DOWN, btnDownPrevState)) {
     adjustDifficulty(-1); // Diminuer la difficulté
-    displayInfo();
-    delay(500); // Anti-rebond
   }
 
-  if (digitalRead(BTN_CHANGE_MODE) == LOW) { // Changer pour LOW (poussé)
+  if (isButtonPressed(BTN_CHANGE_MODE, btnChangeModePrevState)) {
     toggleMode(); // Changer entre droitier et gaucher
-    displayInfo();
-    delay(500); // Anti-rebond
   }
 
-  if (digitalRead(BTN_VALIDATE) == LOW) { // Changer pour LOW (poussé)
+  if (isButtonPressed(BTN_VALIDATE, btnValidatePrevState)) {
     startTraining(); // Démarrer l'entraînement sélectionné
-    delay(500); // Anti-rebond
   }
 
-  if (digitalRead(BTN_BACK) == LOW) { // Changer pour LOW (poussé)
+  if (isButtonPressed(BTN_BACK, btnBackPrevState)) {
     // Code pour revenir en arrière dans le menu
-    delay(500); // Anti-rebond
+    displayInfo(); // Retourner à l'écran d'information
   }
 
-  if (digitalRead(BTN_POWER) == LOW) { // Changer pour LOW (poussé)
-    // Code pour éteindre ou mettre en veille le système
-    delay(500); // Anti-rebond
+  if (isButtonPressed(BTN_POWER, btnPowerPrevState)) {
+    goToSleep(); // Passer en mode veille
   }
 
-  if (digitalRead(BTN_PAUSE_PLAY) == LOW) { // Changer pour LOW (poussé)
-    // Code pour mettre en pause ou reprendre l'entraînement
-    delay(500); // Anti-rebond
+  if (isButtonPressed(BTN_PAUSE_PLAY, btnPausePlayPrevState)) {
+    if (isPaused) {
+      resumeTraining(); // Reprendre l'entraînement
+    } else {
+      pauseTraining(); // Mettre l'entraînement en pause
+    }
   }
 }
