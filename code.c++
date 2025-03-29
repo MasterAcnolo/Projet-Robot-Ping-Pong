@@ -67,6 +67,29 @@ bool isButtonPressed(int pin, bool &prevState) {
   return false;
 }
 
+<<<<<<< HEAD
+=======
+// Initialisation de l'écran et des boutons
+void setup() {
+  Serial.begin(9600);  // Initialisation correcte du moniteur série
+  Serial.println("setup"); // Ajout du point-virgule
+
+  lcd.init();
+  lcd.backlight();
+
+  // Définition des broches comme entrée avec pull-up interne
+  pinMode(BTN_UP, INPUT_PULLUP);
+  pinMode(BTN_DOWN, INPUT_PULLUP);
+  pinMode(BTN_POWER, INPUT_PULLUP);
+  pinMode(BTN_PAUSE_PLAY, INPUT_PULLUP);
+  pinMode(BTN_VALIDATE, INPUT_PULLUP);
+  pinMode(BTN_BACK, INPUT_PULLUP);
+  pinMode(BTN_CHANGE_MODE, INPUT_PULLUP);
+
+  displayInfo(); // Afficher les informations initiales
+}
+
+>>>>>>> fcd983d65bab7d77a1055cbbf943aebcd18bbcc0
 // Fonction pour afficher les informations sur l'écran LCD
 void displayInfo() {
   Serial.println("displayinfo");
@@ -166,6 +189,9 @@ void pauseTraining() {
 void loop() {
 
   Serial.println("Main LOOP");
+=======
+  Serial.println("Main LOOP ");
+
   // Vérification des boutons avec anti-rebond
   if (isButtonPressed(BTN_POWER, btnPowerPrevState)) {
   goToSleep(); // Passer en mode veille
