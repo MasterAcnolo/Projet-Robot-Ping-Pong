@@ -1,65 +1,57 @@
-#include <LiquidCrystal_I2C.h> // Bibliothèque pour LCD I2C
+#include <LiquidCrystal_I2C.h>
 
-// Définition des broches pour les boutons
+#define BTN_POWER 10
+#define BTN_BACK 11
+#define BTN_VALIDATE 12
+#define POT_SELECT A1
 
-#define BTN_POWER 7
-#define BTN_CHANGE_DIFF 8
-#define BTN_CHANGE_TRAIN 9
-#define BTN_CHANGE_MODE 10
-#define BTN_VALIDATE 11
-#define BTN_BACK 12
-#define BTN_PAUSE_PLAY 13
-  
-// Définition des modes et des niveaux de difficulté
-enum Mode {DROITIER, GAUCHER};
-enum Diff {DEBUTANT, FACILE, NORMAL, DIFFICILE, EXTREME};
-enum Train {REVERS, COUP_DROIT, SMASH, TOUS, CHALLENGE};
+// États principaux
+enum Mode { DROITIER, GAUCHER };
+enum Train { REVERS, COUPS_DROIT, SMASH, GENERAL };
+enum Diff { DEBUTANT, FACILE, NORMAL, DIFFICILE, EXTREME };
+enum State {
+  CHOIX_MODE,
+  CHOIX_ENTRAINEMENT,
+  CHOIX_DIFFICULTE,
+  CONFIRMATION,
+  EN_TRAINEMENT,
+  PAUSE,
+  QUIT_CONFIRM
+};
 
-// Variables globales pour l'état actuel du système
-Mode currentMode = DROITIER; // Mode par défaut
-Diff currentDiff = DEBUTANT; // Niveau par défaut
-Train currentTrain = TOUS; // Type d'entraînement par défaut
-bool isPaused = false; // Variable pour la gestion de la pause
-bool isInSleepMode = false; // Variable pour la gestion de la mise en veille
+// Variables d'état
+State state = CHOIX_MODE;
+Mode currentMode = DROITIER;
+Train currentTrain = REVERS;
+Diff currentDiff = NORMAL;
 
-// Variables pour suivre l'état des boutons (précédent et actuel)
-bool btnPowerPrevState = HIGH;
-bool btnChangeDiffPrevState = HIGH;
-bool btnChangeTrainPrevState = HIGH;
-bool btnChangeModePrevState = HIGH;
-bool btnValidatePrevState = HIGH;
-bool btnBackPrevState = HIGH;
-bool btnPausePlayPrevState = HIGH;
+// Sauvegarde des états pour éviter le clignotement
+State lastDisplayedState = static_cast<State>(-1);
+Mode lastMode = static_cast<Mode>(-1);
+Train lastTrain = static_cast<Train>(-1);
+Diff lastDiff = static_cast<Diff>(-1);
 
-// Création d'un objet LCD pour un écran I2C (adresse 0x27, taille 16x2)
-LiquidCrystal_I2C lcd(0x27, 16, 2); // Changez l'adresse si nécessaire
+// Suivi des boutons
+bool BTN_BACKPrevState = HIGH;
+bool BTN_VALIDATEPrevState = HIGH;
 
+// LCD
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// Initialisation de l'écran et des boutons
 void setup() {
-  Serial.begin(9600);  // Initialisation correcte du moniteur série
-  Serial.println("setup"); // Ajout du point-virgule
-
+  Serial.begin(9600);
   lcd.init();
   lcd.backlight();
-
-  // Définition des broches comme entrée avec pull-up interne
-  pinMode(BTN_POWER, INPUT_PULLUP);
-  pinMode(BTN_CHANGE_DIFF, INPUT_PULLUP);
-  pinMode(BTN_CHANGE_TRAIN, INPUT_PULLUP);
-  pinMode(BTN_CHANGE_MODE, INPUT_PULLUP);
-  pinMode(BTN_VALIDATE, INPUT_PULLUP);
   pinMode(BTN_BACK, INPUT_PULLUP);
-  pinMode(BTN_PAUSE_PLAY, INPUT_PULLUP);
- 
-  displayInfo(); // Afficher les informations initiales
+  pinMode(BTN_VALIDATE, INPUT_PULLUP);
+  displayState();
 }
 
-// Fonction pour lire les boutons avec gestion des rebonds
+// Anti-rebond
 bool isButtonPressed(int pin, bool &prevState) {
   bool currentState = digitalRead(pin);
-  if (currentState == LOW && prevState == HIGH) {  // Changement d'état du bouton (appui)
-    delay(50);  // Anti-rebond logiciel
+  if (currentState == LOW && prevState == HIGH) {
+    delay(50);
     prevState = currentState;
     return true;
   }
@@ -67,162 +59,156 @@ bool isButtonPressed(int pin, bool &prevState) {
   return false;
 }
 
-<<<<<<< HEAD
-=======
-// Initialisation de l'écran et des boutons
-void setup() {
-  Serial.begin(9600);  // Initialisation correcte du moniteur série
-  Serial.println("setup"); // Ajout du point-virgule
-
-  lcd.init();
-  lcd.backlight();
-
-  // Définition des broches comme entrée avec pull-up interne
-  pinMode(BTN_UP, INPUT_PULLUP);
-  pinMode(BTN_DOWN, INPUT_PULLUP);
-  pinMode(BTN_POWER, INPUT_PULLUP);
-  pinMode(BTN_PAUSE_PLAY, INPUT_PULLUP);
-  pinMode(BTN_VALIDATE, INPUT_PULLUP);
-  pinMode(BTN_BACK, INPUT_PULLUP);
-  pinMode(BTN_CHANGE_MODE, INPUT_PULLUP);
-
-  displayInfo(); // Afficher les informations initiales
-}
-
->>>>>>> fcd983d65bab7d77a1055cbbf943aebcd18bbcc0
-// Fonction pour afficher les informations sur l'écran LCD
-void displayInfo() {
-  Serial.println("displayinfo");
+void displayState() {
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Mode: ");
-  lcd.print(currentMode == DROITIER ? "Droitier" : "Gaucher");
-
-  lcd.setCursor(0, 1);
-  lcd.print("Diff: ");
-  // switch (currentDiff) {
-  //   case DEBUTANT: lcd.print("Debutant"); break;
-  //   case FACILE: lcd.print("Facile"); break;
-  //   case NORMAL: lcd.print("Normal"); break;
-  //   case DIFFICILE: lcd.print("Difficile"); break;
-  //   case EXTREME: lcd.print("Extreme"); break;
-  // }
-}
-
-// Fonction pour changer de mode (droitier / gaucher)
-void toggleMode() {
-  Serial.println("togglemode");
-  currentMode = (currentMode == DROITIER) ? GAUCHER : DROITIER;
-  displayInfo();
-}
-
-// Fonction pour changer le niveau de difficulté
-void adjustDiff(int direction) {
-  if (direction > 0) {
-    currentDiff = (Diff)((currentDiff + 1) % 5);
-  displayInfo();
-}
-
-// Fonction pour gérer les entraînements
-void startTrain() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  switch (currentTrain) {
-    case REVERS: 
-      lcd.print("Revers");
+  switch (state) {
+    case CHOIX_MODE:
+      lcd.setCursor(0, 0);
+      lcd.print("Mode:");
+      lcd.setCursor(0, 1);
+      lcd.print(currentMode == DROITIER ? "Droitier" : "Gaucher");
       break;
-    case COUP_DROIT: 
-      lcd.print("Coup Droit");
+
+    case CHOIX_ENTRAINEMENT:
+      lcd.setCursor(0, 0);
+      lcd.print("Entrainement:");
+      lcd.setCursor(0, 1);
+      switch (currentTrain) {
+        case REVERS: lcd.print("Revers"); break;
+        case COUPS_DROIT: lcd.print("Coup droit"); break;
+        case SMASH: lcd.print("Smash"); break;
+        case GENERAL: lcd.print("General"); break;
+      }
       break;
-    case SMASH: 
-      lcd.print("Smash");
+
+    case CHOIX_DIFFICULTE:
+      lcd.setCursor(0, 0);
+      lcd.print("Difficulte:");
+      lcd.setCursor(0, 1);
+      switch (currentDiff) {
+        case DEBUTANT: lcd.print("Debutant"); break;
+        case FACILE: lcd.print("Facile"); break;
+        case NORMAL: lcd.print("Normal"); break;
+        case DIFFICILE: lcd.print("Difficile"); break;
+        case EXTREME: lcd.print("Extreme"); break;
+      }
       break;
-    case TOUS: 
-      lcd.print("General");
+
+    case CONFIRMATION:
+      lcd.setCursor(0, 0);
+      lcd.print("Commencer ?");
+      lcd.setCursor(0, 1);
+      lcd.print("Valider/Annuler");
       break;
-    case CHALLENGE:
-      lcd.print("Challenge");
+
+    case EN_TRAINEMENT:
+      lcd.setCursor(0, 0);
+      lcd.print("Entrainement en");
+      lcd.setCursor(0, 1);
+      lcd.print("cours...");
+      break;
+
+    case PAUSE:
+      lcd.setCursor(0, 0);
+      lcd.print("Entrainement");
+      lcd.setCursor(0, 1);
+      lcd.print("en pause...");
+      break;
+
+    case QUIT_CONFIRM:
+      lcd.setCursor(0, 0);
+      lcd.print("Quitter ?");
+      lcd.setCursor(0, 1);
+      lcd.print("Valider/Annuler");
       break;
   }
-  delay(2000); // Afficher l'écran pendant 2 secondes
 }
 
-// Fonction pour changer l'entrainement
-void adjustTrain (int direction) {
-  if (direction > 0) {
-    currentTrain = (Train)((currentTrain + 1) % 5);
-    displayInfo();
-	}
-}
-  
-// Fonction pour gérer la mise en veille
-void goToSleep() {
-  Serial.println("sleep");
-  isInSleepMode = true;
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Mode veille...");
-  delay(3000); // Afficher "Mode veille" pendant 3 secondes
-}
-
-// Fonction pour reprendre l'entraînement après une pause
-void resumeTraining() {
-  Serial.println("resumetraining");
-  isPaused = false;
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Reprise de l'entrainement");
-  delay(2000); // Afficher pendant 2 secondes
-}
-
-// Fonction pour mettre l'entraînement en pause
-void pauseTraining() {
-  Serial.println("pause");
-  isPaused = true;
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Entrainement en pause");
-  delay(2000); // Afficher pendant 2 secondes
-}
-
-// Boucle principale
 void loop() {
+  int potValue = analogRead(POT_SELECT);
 
-  Serial.println("Main LOOP");
-=======
-  Serial.println("Main LOOP ");
-
-  // Vérification des boutons avec anti-rebond
-  if (isButtonPressed(BTN_POWER, btnPowerPrevState)) {
-  goToSleep(); // Passer en mode veille
- 
-  }
-  
-  if (isButtonPressed(BTN_CHANGE_DIFF, btnChangeDiffPrevState)) {
-    adjustDiff(1); // Changer la difficulté
-  }
-
-  if (isButtonPressed(BTN_CHANGE_TRAIN, btnChangeTrainPrevState)) {
-    adjustTrain(1); // Changer l'entraînement
+  // Gestion potentiomètre
+  switch (state) {
+    case CHOIX_MODE:
+      currentMode = (potValue < 512) ? DROITIER : GAUCHER;
+      break;
+    case CHOIX_ENTRAINEMENT:
+      currentTrain = static_cast<Train>(map(potValue, 0, 1023, 0, 4));
+      break;
+    case CHOIX_DIFFICULTE:
+      currentDiff = static_cast<Diff>(map(potValue, 0, 1023, 0, 5));
+      break;
+    default:
+      break;
   }
 
-  if (isButtonPressed(BTN_CHANGE_MODE, btnChangeModePrevState)) {
-    toggleMode(); // Changer entre droitier et gaucher
+  // Rafraîchissement intelligent
+  bool needUpdate = false;
+  if (state != lastDisplayedState) {
+    needUpdate = true;
+    lastDisplayedState = state;
+  }
+  if (state == CHOIX_MODE && currentMode != lastMode) {
+    needUpdate = true;
+    lastMode = currentMode;
+  } else if (state == CHOIX_ENTRAINEMENT && currentTrain != lastTrain) {
+    needUpdate = true;
+    lastTrain = currentTrain;
+  } else if (state == CHOIX_DIFFICULTE && currentDiff != lastDiff) {
+    needUpdate = true;
+    lastDiff = currentDiff;
   }
 
-  if (isButtonPressed(BTN_VALIDATE, btnValidatePrevState)) {
-    startTraining(); // Démarrer l'entraînement sélectionné
-  }
+  if (needUpdate) displayState();
 
-  if (isButtonPressed(BTN_BACK, btnBackPrevState)) {
-    // Code pour revenir en arrière dans le menu
-    displayInfo(); // Retourner à l'écran d'information
-  }
-
-  if (isButtonPressed(BTN_PAUSE_PLAY, btnPausePlayPrevState)) {
-      resumeTraining(); // Reprendre l'entraînement
-    } 
-    else {
-      pauseTraining(); // Mettre l'entraînement en pause
+  // Bouton VALIDER
+  if (isButtonPressed(BTN_VALIDATE, BTN_VALIDATEPrevState)) {
+    switch (state) {
+      case CHOIX_MODE:
+        state = CHOIX_ENTRAINEMENT;
+        break;
+      case CHOIX_ENTRAINEMENT:
+        state = CHOIX_DIFFICULTE;
+        break;
+      case CHOIX_DIFFICULTE:
+        state = CONFIRMATION;
+        break;
+      case CONFIRMATION:
+        state = EN_TRAINEMENT;
+        break;
+      case QUIT_CONFIRM:
+        state = CHOIX_MODE; // Fin
+        break;
+      default:
+        break;
     }
+    displayState();
   }
+
+  // Bouton ANNULER
+  if (isButtonPressed(BTN_BACK, BTN_BACKPrevState)) {
+    switch (state) {
+      case CHOIX_ENTRAINEMENT:
+        state = CHOIX_MODE;
+        break;
+      case CHOIX_DIFFICULTE:
+        state = CHOIX_ENTRAINEMENT;
+        break;
+      case CONFIRMATION:
+        state = CHOIX_DIFFICULTE;
+        break;
+      case EN_TRAINEMENT:
+        state = PAUSE;
+        break;
+      case PAUSE:
+        state = QUIT_CONFIRM;
+        break;
+      case QUIT_CONFIRM:
+        state = EN_TRAINEMENT; // Reprise
+        break;
+      default:
+        break;
+    }
+    displayState();
+  }
+}
